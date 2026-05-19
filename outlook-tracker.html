@@ -4,498 +4,249 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Vastausta odottavat</title>
-<script src="https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js"></script>
-<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
-  :root {
-    --ink: #1c1c1e;
-    --paper: #f7f5f0;
-    --rule: #e0dbd2;
-    --accent: #c0392b;
-    --warm: #8b7355;
-    --ghost: #b0a898;
-    --green: #27ae60;
-  }
-
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-
   body {
-    font-family: 'DM Mono', monospace;
-    background: var(--paper);
-    color: var(--ink);
+    font-family: -apple-system, system-ui, sans-serif;
+    background: #f7f5f0;
+    color: #1c1c1e;
+    margin: 0;
+    padding: 20px;
     min-height: 100vh;
   }
-
-  /* Masthead */
-  .masthead {
-    border-bottom: 2px solid var(--ink);
-    padding: 28px 40px 20px;
-    display: flex;
-    align-items: flex-end;
-    justify-content: space-between;
-    gap: 20px;
+  h1 {
+    border-bottom: 2px solid #1c1c1e;
+    padding-bottom: 10px;
   }
-
-  .masthead-left {}
-
-  .masthead-eyebrow {
-    font-size: 10px;
-    letter-spacing: 0.2em;
-    text-transform: uppercase;
-    color: var(--ghost);
-    margin-bottom: 4px;
-  }
-
-  .masthead-title {
-    font-family: 'DM Serif Display', serif;
-    font-size: 32px;
-    line-height: 1;
-    color: var(--ink);
-  }
-
-  .masthead-title em {
-    font-style: italic;
-    color: var(--accent);
-  }
-
-  .masthead-date {
-    font-size: 11px;
-    color: var(--ghost);
-    text-align: right;
-    line-height: 1.6;
-  }
-
-  /* Login section */
-  #login-section {
-    max-width: 480px;
-    margin: 80px auto;
-    text-align: center;
-    padding: 0 20px;
-  }
-
-  .login-headline {
-    font-family: 'DM Serif Display', serif;
-    font-size: 22px;
-    margin-bottom: 12px;
-  }
-
-  .login-sub {
-    font-size: 12px;
-    color: var(--ghost);
-    margin-bottom: 36px;
-    line-height: 1.7;
-  }
-
-  .btn-ms {
-    display: inline-flex;
-    align-items: center;
-    gap: 10px;
-    background: var(--ink);
+  .accent { color: #c0392b; }
+  button {
+    background: #1c1c1e;
     color: #fff;
     border: none;
     padding: 14px 28px;
-    font-family: 'DM Mono', monospace;
-    font-size: 12px;
-    letter-spacing: 0.08em;
+    font-size: 14px;
     cursor: pointer;
-    transition: background 0.2s;
+    border-radius: 4px;
+    margin: 4px;
   }
-
-  .btn-ms:hover { background: #333; }
-
-  .ms-logo {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 2px;
-    width: 16px;
-    height: 16px;
-    flex-shrink: 0;
-  }
-
-  .ms-logo span {
-    display: block;
-  }
-
-  .ms-logo span:nth-child(1) { background: #f25022; }
-  .ms-logo span:nth-child(2) { background: #7fba00; }
-  .ms-logo span:nth-child(3) { background: #00a4ef; }
-  .ms-logo span:nth-child(4) { background: #ffb900; }
-
-  /* Controls bar */
-  #controls {
-    display: none;
-    padding: 16px 40px;
-    border-bottom: 1px solid var(--rule);
-    align-items: center;
-    gap: 16px;
-    flex-wrap: wrap;
-    background: #fff;
-  }
-
-  #controls.visible { display: flex; }
-
-  .control-label {
-    font-size: 11px;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: var(--ghost);
-  }
-
-  select, button {
-    font-family: 'DM Mono', monospace;
-  }
-
+  button:disabled { background: #999; }
   select {
-    padding: 6px 10px;
-    border: 1px solid var(--rule);
-    background: var(--paper);
+    padding: 8px;
+    font-size: 14px;
+    margin: 4px;
+  }
+  .log {
+    background: #1c1c1e;
+    color: #0f0;
+    padding: 12px;
+    font-family: monospace;
     font-size: 12px;
-    color: var(--ink);
-    cursor: pointer;
+    border-radius: 4px;
+    margin-top: 20px;
+    min-height: 100px;
+    white-space: pre-wrap;
+    word-break: break-all;
   }
-
-  .btn-fetch {
-    background: var(--ink);
-    color: #fff;
-    border: none;
-    padding: 8px 20px;
-    font-size: 11px;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    cursor: pointer;
-    transition: background 0.15s;
-  }
-
-  .btn-fetch:hover:not(:disabled) { background: #333; }
-  .btn-fetch:disabled { background: var(--ghost); cursor: not-allowed; }
-
-  .btn-signout {
-    margin-left: auto;
-    background: none;
-    border: 1px solid var(--rule);
-    color: var(--ghost);
-    padding: 6px 14px;
-    font-size: 11px;
-    cursor: pointer;
-  }
-
-  .btn-signout:hover { border-color: var(--ink); color: var(--ink); }
-
-  /* Status */
-  #status-bar {
-    padding: 10px 40px;
-    font-size: 11px;
-    color: var(--ghost);
-    font-style: italic;
-    min-height: 34px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .spinner {
-    width: 12px;
-    height: 12px;
-    border: 2px solid var(--rule);
-    border-top-color: var(--ink);
-    border-radius: 50%;
-    animation: spin 0.6s linear infinite;
-    display: none;
-  }
-
-  .spinner.active { display: block; }
-
-  @keyframes spin { to { transform: rotate(360deg); } }
-
-  /* Results */
-  #results {
-    padding: 24px 40px 40px;
-    max-width: 860px;
-  }
-
-  .results-meta {
-    font-size: 11px;
-    color: var(--ghost);
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    margin-bottom: 20px;
-    padding-bottom: 10px;
-    border-bottom: 1px solid var(--rule);
-  }
-
   .email-row {
-    display: grid;
-    grid-template-columns: 1fr auto;
-    gap: 16px;
-    align-items: start;
-    padding: 18px 0;
-    border-bottom: 1px solid var(--rule);
-    animation: fadeIn 0.3s ease forwards;
-    opacity: 0;
+    background: #fff;
+    border-left: 4px solid #2980b9;
+    padding: 12px 16px;
+    margin: 8px 0;
+    border-radius: 0 6px 6px 0;
   }
-
-  @keyframes fadeIn {
-    to { opacity: 1; }
-  }
-
-  .email-subject {
-    font-family: 'DM Serif Display', serif;
-    font-size: 16px;
-    color: var(--ink);
-    margin-bottom: 5px;
-  }
-
-  .email-meta {
-    font-size: 11px;
-    color: var(--ghost);
-    line-height: 1.8;
-  }
-
-  .email-to { color: var(--warm); }
-
-  .email-snippet {
-    font-size: 11px;
-    color: var(--ghost);
-    margin-top: 6px;
-    font-style: italic;
-    line-height: 1.5;
-    max-width: 520px;
-  }
-
-  .age-badge {
-    text-align: right;
-    flex-shrink: 0;
-  }
-
-  .age-number {
-    font-family: 'DM Serif Display', serif;
-    font-size: 28px;
-    line-height: 1;
-  }
-
-  .age-unit {
-    font-size: 9px;
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
-    color: var(--ghost);
-    display: block;
-    margin-top: 2px;
-  }
-
-  .age-tag {
-    display: inline-block;
-    margin-top: 4px;
-    font-size: 9px;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    padding: 2px 6px;
-    color: #fff;
-  }
-
-  .urgent { color: var(--accent); }
-  .tag-urgent { background: var(--accent); }
-
-  .waiting { color: #e67e22; }
-  .tag-waiting { background: #e67e22; }
-
-  .fresh { color: #2980b9; }
-  .tag-fresh { background: #2980b9; }
-
-  .empty-state {
-    padding: 60px 0;
-    text-align: center;
-    color: var(--ghost);
-  }
-
-  .empty-icon {
-    font-size: 32px;
-    margin-bottom: 12px;
-  }
-
-  .empty-text {
-    font-family: 'DM Serif Display', serif;
-    font-size: 18px;
-    color: var(--ink);
-    margin-bottom: 6px;
-  }
-
-  .empty-sub { font-size: 12px; }
-
-  .error-box {
-    background: #fdf0f0;
-    border-left: 3px solid var(--accent);
-    padding: 14px 18px;
-    font-size: 12px;
-    color: var(--accent);
-    margin: 20px 0;
-  }
+  .urgent { border-left-color: #c0392b; }
+  .waiting { border-left-color: #e67e22; }
+  .email-subject { font-weight: bold; font-size: 16px; }
+  .email-meta { font-size: 12px; color: #666; margin-top: 4px; }
+  .age { float: right; font-size: 18px; font-weight: bold; }
 </style>
 </head>
 <body>
 
-<div class="masthead">
-  <div class="masthead-left">
-    <div class="masthead-eyebrow">Outlook · Microsoft 365</div>
-    <div class="masthead-title">Vastausta <em>odottavat</em></div>
-  </div>
-  <div class="masthead-date" id="today-date"></div>
+<h1>Vastausta <span class="accent">odottavat</span></h1>
+
+<div id="login-area">
+  <p>Kirjaudu Microsoft-tilillä jatkaaksesi:</p>
+  <button onclick="doSignIn()">🔑 Kirjaudu sisään</button>
 </div>
 
-<div id="login-section">
-  <div class="login-headline">Kirjaudu sisään</div>
-  <div class="login-sub">Sovellus hakee lähettämäsi sähköpostit<br>ja näyttää ne joihin ei ole tullut vastausta.</div>
-  <button class="btn-ms" onclick="signIn()">
-    <div class="ms-logo">
-      <span></span><span></span><span></span><span></span>
-    </div>
-    Kirjaudu Microsoft-tilillä
-  </button>
+<div id="app-area" style="display:none;">
+  <p>Kirjautunut: <strong id="user-name"></strong></p>
+  <label>Hae viimeiseltä:
+    <select id="days">
+      <option value="7">7 päivää</option>
+      <option value="14" selected>14 päivää</option>
+      <option value="30">30 päivää</option>
+    </select>
+  </label>
+  <button onclick="fetchEmails()" id="fetch-btn">📧 Hae sähköpostit</button>
+  <button onclick="doSignOut()">Kirjaudu ulos</button>
+  <div id="results"></div>
 </div>
 
-<div id="controls">
-  <span class="control-label">Hae viimeiseltä</span>
-  <select id="days-select">
-    <option value="7">7 päivää</option>
-    <option value="14" selected>14 päivää</option>
-    <option value="30">30 päivää</option>
-    <option value="60">60 päivää</option>
-  </select>
-  <button class="btn-fetch" id="fetch-btn" onclick="fetchEmails()">Hae sähköpostit</button>
-  <button class="btn-signout" onclick="signOut()">Kirjaudu ulos</button>
-</div>
-
-<div id="status-bar">
-  <div class="spinner" id="spinner"></div>
-  <span id="status-text"></span>
-</div>
-
-<div id="results"></div>
+<div class="log" id="log">Lataa sivua...</div>
 
 <script>
-// ── CONFIG ──────────────────────────────────────────────
-const CLIENT_ID = "c9ab03f3-a6ab-457a-a28a-8e55d2fdc74b";
-const TENANT_ID = "13bef141-1ef7-4c1f-9a84-1944206b7af6";
-const SCOPES    = ["Mail.Read", "User.Read"];
+function log(msg) {
+  const el = document.getElementById('log');
+  el.textContent += '\n' + msg;
+  console.log(msg);
+}
 
-// ── MSAL ────────────────────────────────────────────────
-const msalConfig = {
+window.addEventListener('error', (e) => {
+  log('VIRHE: ' + e.message + ' @ ' + (e.filename || '?') + ':' + (e.lineno || '?'));
+});
+
+log('Sivu ladattu. Yritetään ladata MSAL...');
+</script>
+
+<script src="https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js"
+        onload="log('MSAL ladattu')"
+        onerror="log('MSAL EI LATAUTUNUT')"></script>
+
+<script>
+const CONFIG = {
   auth: {
-    clientId: CLIENT_ID,
-    authority: `https://login.microsoftonline.com/${TENANT_ID}`,
-    redirectUri: window.location.href.split('?')[0],
+    clientId: "c9ab03f3-a6ab-457a-a28a-8e55d2fdc74b",
+    authority: "https://login.microsoftonline.com/13bef141-1ef7-4c1f-9a84-1944206b7af6",
+    redirectUri: window.location.href.split('?')[0].split('#')[0]
   },
   cache: { cacheLocation: "sessionStorage" }
 };
+const SCOPES = ["Mail.Read", "User.Read"];
 
-const msalApp = new msal.PublicClientApplication(msalConfig);
+let pca = null;
 let account = null;
 
-// Set today's date
-const d = new Date();
-document.getElementById('today-date').innerHTML =
-  d.toLocaleDateString('fi-FI', {weekday:'long', year:'numeric', month:'long', day:'numeric'});
+window.addEventListener('load', async () => {
+  try {
+    log('Redirect URI: ' + CONFIG.auth.redirectUri);
+    if (typeof msal === 'undefined') {
+      log('FAIL: msal-objekti puuttuu');
+      return;
+    }
+    pca = new msal.PublicClientApplication(CONFIG);
+    log('MSAL alustettu OK');
 
-// Handle redirect on load
-msalApp.handleRedirectPromise().then(resp => {
-  if (resp && resp.account) {
-    account = resp.account;
-    showApp();
-  } else {
-    const accounts = msalApp.getAllAccounts();
-    if (accounts.length > 0) {
-      account = accounts[0];
+    const resp = await pca.handleRedirectPromise();
+    if (resp && resp.account) {
+      account = resp.account;
+      log('Kirjautunut: ' + account.username);
       showApp();
+    } else {
+      const accs = pca.getAllAccounts();
+      if (accs.length > 0) {
+        account = accs[0];
+        log('Aiempi tili: ' + account.username);
+        showApp();
+      } else {
+        log('Ei kirjautumista. Paina nappia.');
+      }
+    }
+  } catch (e) {
+    log('ALUSTUSVIRHE: ' + e.message);
+  }
+});
+
+async function doSignIn() {
+  try {
+    log('Yritetaan kirjautua popup-tavalla...');
+    if (!pca) {
+      log('MSAL ei alustettu');
+      return;
+    }
+    const resp = await pca.loginPopup({ scopes: SCOPES });
+    account = resp.account;
+    log('Kirjauduttu: ' + account.username);
+    showApp();
+  } catch (e) {
+    log('POPUP VIRHE: ' + e.message);
+    log('Yritetaan redirect...');
+    try {
+      await pca.loginRedirect({ scopes: SCOPES });
+    } catch (e2) {
+      log('REDIRECT VIRHE: ' + e2.message);
     }
   }
-}).catch(e => setStatus("Kirjautumisvirhe: " + e.message));
-
-function signIn() {
-  msalApp.loginRedirect({ scopes: SCOPES });
 }
 
-function signOut() {
-  msalApp.logoutRedirect();
+async function doSignOut() {
+  try {
+    await pca.logoutPopup();
+  } catch (e) {
+    log('Logout: ' + e.message);
+  }
+  account = null;
+  document.getElementById('login-area').style.display = 'block';
+  document.getElementById('app-area').style.display = 'none';
 }
 
 function showApp() {
-  document.getElementById('login-section').style.display = 'none';
-  document.getElementById('controls').classList.add('visible');
-  setStatus(`Kirjautunut: ${account.username}`);
+  document.getElementById('login-area').style.display = 'none';
+  document.getElementById('app-area').style.display = 'block';
+  document.getElementById('user-name').textContent = account.username;
 }
 
 async function getToken() {
   try {
-    const resp = await msalApp.acquireTokenSilent({ scopes: SCOPES, account });
-    return resp.accessToken;
-  } catch {
-    const resp = await msalApp.acquireTokenPopup({ scopes: SCOPES });
-    return resp.accessToken;
+    const r = await pca.acquireTokenSilent({ scopes: SCOPES, account });
+    return r.accessToken;
+  } catch (e) {
+    log('Silent token failed, popup...');
+    const r = await pca.acquireTokenPopup({ scopes: SCOPES });
+    return r.accessToken;
   }
-}
-
-// ── GRAPH API HELPERS ────────────────────────────────────
-async function graphGet(url, token) {
-  const r = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
-  if (!r.ok) throw new Error(`Graph error ${r.status}: ${await r.text()}`);
-  return r.json();
 }
 
 async function fetchEmails() {
   const btn = document.getElementById('fetch-btn');
   btn.disabled = true;
   document.getElementById('results').innerHTML = '';
-
   try {
     const token = await getToken();
-    const days = parseInt(document.getElementById('days-select').value);
-    const since = new Date(Date.now() - days * 864e5).toISOString();
+    log('Token saatu');
+    const days = parseInt(document.getElementById('days').value);
+    const since = new Date(Date.now() - days*864e5).toISOString();
 
-    setStatus("Haetaan lähetettyjä...", true);
-    const sentUrl = `https://graph.microsoft.com/v1.0/me/mailFolders/SentItems/messages?$top=50&$filter=sentDateTime ge ${since}&$select=id,subject,toRecipients,sentDateTime,conversationId,bodyPreview&$orderby=sentDateTime desc`;
-    const sentData = await graphGet(sentUrl, token);
+    log('Haetaan lähetettyjä...');
+    const sentRes = await fetch(
+      'https://graph.microsoft.com/v1.0/me/mailFolders/SentItems/messages?$top=50&$filter=sentDateTime ge ' + since + '&$select=id,subject,toRecipients,sentDateTime,conversationId,bodyPreview&$orderby=sentDateTime desc',
+      { headers: { Authorization: 'Bearer ' + token } }
+    );
+    if (!sentRes.ok) throw new Error('Graph API: ' + sentRes.status);
+    const sentData = await sentRes.json();
     const sent = sentData.value || [];
+    log('Löytyi ' + sent.length + ' lähetettyä viestiä');
 
-    setStatus(`Löytyi ${sent.length} lähetettyä viestiä. Tarkistetaan vastaukset...`, true);
-
-    // Check each sent message for replies
     const unreplied = [];
-    for (const msg of sent) {
-      // Skip automated/no-reply senders heuristically
-      const subject = msg.subject || '';
-      if (/^(RE:|FW:|FWD:)/i.test(subject)) continue; // skip if it's itself a reply/forward
+    for (let i = 0; i < sent.length; i++) {
+      const msg = sent[i];
+      if (/^(RE:|FW:|FWD:)/i.test(msg.subject || '')) continue;
 
-      // Search for replies in inbox with same conversationId
-      const convUrl = `https://graph.microsoft.com/v1.0/me/messages?$filter=conversationId eq '${msg.conversationId}'&$select=id,from,sentDateTime,subject&$top=20`;
-      const convData = await graphGet(convUrl, token);
-      const msgs = convData.value || [];
-
-      // Check if any message in thread is NOT from me (i.e. a reply)
-      const hasReply = msgs.some(m => {
-        const fromAddr = m.from?.emailAddress?.address?.toLowerCase() || '';
-        return fromAddr !== account.username.toLowerCase();
+      const convRes = await fetch(
+        "https://graph.microsoft.com/v1.0/me/messages?$filter=conversationId eq '" + msg.conversationId + "'&$select=from,sentDateTime&$top=20",
+        { headers: { Authorization: 'Bearer ' + token } }
+      );
+      const convData = await convRes.json();
+      const hasReply = (convData.value || []).some(m => {
+        const f = m.from && m.from.emailAddress && m.from.emailAddress.address ? m.from.emailAddress.address.toLowerCase() : '';
+        return f !== account.username.toLowerCase();
       });
-
       if (!hasReply) {
         const sentDate = new Date(msg.sentDateTime);
-        const daysSince = Math.floor((Date.now() - sentDate) / 864e5);
         unreplied.push({
           subject: msg.subject || '(ei aihetta)',
-          to: msg.toRecipients?.map(r => r.emailAddress?.address).join(', ') || '',
+          to: msg.toRecipients ? msg.toRecipients.map(r => r.emailAddress.address).join(', ') : '',
           date: sentDate.toLocaleDateString('fi-FI'),
-          daysSince,
-          snippet: msg.bodyPreview?.slice(0, 120) || ''
+          daysSince: Math.floor((Date.now() - sentDate) / 864e5),
+          snippet: msg.bodyPreview ? msg.bodyPreview.slice(0, 100) : ''
         });
       }
     }
-
-    // Sort by oldest first
     unreplied.sort((a, b) => b.daysSince - a.daysSince);
+    log('Vastausta odottaa: ' + unreplied.length);
     renderResults(unreplied);
-    setStatus('');
-
   } catch (e) {
-    setStatus('');
-    document.getElementById('results').innerHTML = `<div class="error-box">⚠️ ${e.message}</div>`;
+    log('HAKUVIRHE: ' + e.message);
   } finally {
     btn.disabled = false;
   }
@@ -503,45 +254,23 @@ async function fetchEmails() {
 
 function renderResults(list) {
   const el = document.getElementById('results');
-
   if (list.length === 0) {
-    el.innerHTML = `
-      <div class="empty-state">
-        <div class="empty-icon">✓</div>
-        <div class="empty-text">Kaikki vastattu</div>
-        <div class="empty-sub">Ei avoimia sähköposteja valitulla aikavälillä.</div>
-      </div>`;
+    el.innerHTML = '<p>✅ Kaikki vastattu!</p>';
     return;
   }
-
-  let html = `<div class="results-meta">${list.length} sähköpostia ilman vastausta</div>`;
-
-  list.forEach((e, i) => {
-    const cls = e.daysSince >= 14 ? 'urgent' : e.daysSince >= 7 ? 'waiting' : 'fresh';
-    const tag = e.daysSince >= 14 ? 'Kiireellinen' : e.daysSince >= 7 ? 'Odottaa' : 'Tuore';
-    html += `
-      <div class="email-row" style="animation-delay:${i * 0.05}s">
-        <div>
-          <div class="email-subject">${e.subject}</div>
-          <div class="email-meta">
-            <span class="email-to">→ ${e.to}</span> &nbsp;·&nbsp; ${e.date}
-          </div>
-          ${e.snippet ? `<div class="email-snippet">${e.snippet}</div>` : ''}
-        </div>
-        <div class="age-badge">
-          <div class="age-number ${cls}">${e.daysSince}</div>
-          <span class="age-unit">pv sitten</span>
-          <div class="age-tag tag-${cls}">${tag}</div>
-        </div>
-      </div>`;
-  });
-
+  let html = '<h2>' + list.length + ' viestiä ilman vastausta</h2>';
+  for (const e of list) {
+    const cls = e.daysSince >= 14 ? 'urgent' : e.daysSince >= 7 ? 'waiting' : '';
+    html += '<div class="email-row ' + cls + '">' +
+      '<span class="age">' + e.daysSince + ' pv</span>' +
+      '<div class="email-subject">' + e.subject + '</div>' +
+      '<div class="email-meta">→ ' + e.to + ' · ' + e.date + '</div>';
+    if (e.snippet) {
+      html += '<div class="email-meta" style="margin-top:6px;font-style:italic">' + e.snippet + '</div>';
+    }
+    html += '</div>';
+  }
   el.innerHTML = html;
-}
-
-function setStatus(msg, loading = false) {
-  document.getElementById('status-text').textContent = msg;
-  document.getElementById('spinner').classList.toggle('active', loading);
 }
 </script>
 </body>
