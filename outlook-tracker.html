@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Vastausta odottavat</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-authentication-library/2.38.3/msal-browser.min.js"></script>
+<script src="https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -387,7 +387,7 @@ const msalConfig = {
   cache: { cacheLocation: "sessionStorage" }
 };
 
-const msal = new msal.PublicClientApplication(msalConfig);
+const msalApp = new msal.PublicClientApplication(msalConfig);
 let account = null;
 
 // Set today's date
@@ -396,12 +396,12 @@ document.getElementById('today-date').innerHTML =
   d.toLocaleDateString('fi-FI', {weekday:'long', year:'numeric', month:'long', day:'numeric'});
 
 // Handle redirect on load
-msal.handleRedirectPromise().then(resp => {
+msalApp.handleRedirectPromise().then(resp => {
   if (resp && resp.account) {
     account = resp.account;
     showApp();
   } else {
-    const accounts = msal.getAllAccounts();
+    const accounts = msalApp.getAllAccounts();
     if (accounts.length > 0) {
       account = accounts[0];
       showApp();
@@ -410,11 +410,11 @@ msal.handleRedirectPromise().then(resp => {
 }).catch(e => setStatus("Kirjautumisvirhe: " + e.message));
 
 function signIn() {
-  msal.loginRedirect({ scopes: SCOPES });
+  msalApp.loginRedirect({ scopes: SCOPES });
 }
 
 function signOut() {
-  msal.logoutRedirect();
+  msalApp.logoutRedirect();
 }
 
 function showApp() {
@@ -425,10 +425,10 @@ function showApp() {
 
 async function getToken() {
   try {
-    const resp = await msal.acquireTokenSilent({ scopes: SCOPES, account });
+    const resp = await msalApp.acquireTokenSilent({ scopes: SCOPES, account });
     return resp.accessToken;
   } catch {
-    const resp = await msal.acquireTokenPopup({ scopes: SCOPES });
+    const resp = await msalApp.acquireTokenPopup({ scopes: SCOPES });
     return resp.accessToken;
   }
 }
@@ -546,4 +546,3 @@ function setStatus(msg, loading = false) {
 </script>
 </body>
 </html>
-
