@@ -218,21 +218,26 @@ async function fetchEmails() {
     log('Löytyi ' + sent.length + ' lähetettyä viestiä');
 
     const myDomain = account.username.split('@')[1].toLowerCase();
-    log('Oma domain: ' + myDomain + ' (suodatetaan sisäiset)');
+    log('Oma domain: ' + myDomain);
 
     const unreplied = [];
     for (let i = 0; i < sent.length; i++) {
       const msg = sent[i];
-      if (/^(RE:|FW:|FWD:)/i.test(msg.subject || '')) continue;
+      const subject = msg.subject || '';
+      if (/^(RE:|FW:|FWD:)/i.test(subject)) continue;
 
-      // Check if all recipients are external (not from my domain)
+      // Skip Teams/calendar invitations and automated stuff
+      const preview = (msg.bodyPreview || '').toLowerCase();
+      if (/microsoft teams meeting|teams-kokous|join the meeting|liity kokoukseen/i.test(preview)) continue;
+      if (/^(invitation|kutsu|kalenterikutsu|meeting:)/i.test(subject)) continue;
+
+      // At least one external recipient
       const recipients = msg.toRecipients || [];
       if (recipients.length === 0) continue;
       const hasExternal = recipients.some(r => {
         const addr = (r.emailAddress && r.emailAddress.address || '').toLowerCase();
         if (!addr) return false;
         const domain = addr.split('@')[1] || '';
-        // exclude my domain and obvious automated senders
         if (domain === myDomain) return false;
         if (/noreply|no-reply|notifications?|mailer-daemon|donotreply/i.test(addr)) return false;
         return true;
@@ -269,7 +274,20 @@ async function fetchEmails() {
   }
 }
 
+let lastResults = [];
+
+function copyToClipboard() {
+  if (lastResults.length === 0) return;
+  const text = 'Vastausta odottavat sähköpostit:\n\n' +
+    lastResults.map(e => `• ${e.subject}\n  → ${e.to}\n  Lähetetty: ${e.date} (${e.daysSince} pv sitten)`).join('\n\n');
+  navigator.clipboard.writeText(text).then(() => {
+    log('✓ Lista kopioitu leikepöydälle');
+    alert('Lista kopioitu! Voit nyt liittää sen Claudeen.');
+  }).catch(e => log('Kopiointi ei onnistunut: ' + e.message));
+}
+
 function renderResults(list) {
+  lastResults = list;
   const el = document.getElementById('results');
   if (list.length === 0) {
     el.innerHTML = '<p>✅ Kaikki vastattu!</p>';
