@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Vastausta odottavat v1.4</title>
+<title>Vastausta odottavat v1.5</title>
 <style>
   body {
     font-family: -apple-system, system-ui, sans-serif;
@@ -62,7 +62,7 @@
 </head>
 <body>
 
-<h1>Vastausta <span class="accent">odottavat</span> <span style="font-size:12px;color:#999;font-weight:normal;">v1.4</span></h1>
+<h1>Vastausta <span class="accent">odottavat</span> <span style="font-size:12px;color:#999;font-weight:normal;">v1.5 (debug)</span></h1>
 
 <div id="login-area">
   <p>Kirjaudu Microsoft-tilillä jatkaaksesi:</p>
@@ -86,7 +86,7 @@
 <div class="log" id="log">Lataa sivua...</div>
 
 <script>
-const VERSION = "1.4";
+const VERSION = "1.5";
 
 function log(msg) {
   const el = document.getElementById('log');
@@ -208,10 +208,12 @@ async function fetchEmails() {
     log('Token saatu');
     const days = parseInt(document.getElementById('days').value);
     const since = new Date(Date.now() - days*864e5).toISOString();
+    const myEmail = account.username.toLowerCase();
+    const myDomain = myEmail.split('@')[1];
 
-    log('Haetaan lähetettyjä...');
+    log('Haetaan lähetettyjä (' + days + ' pv)...');
     const sentRes = await fetch(
-      'https://graph.microsoft.com/v1.0/me/mailFolders/SentItems/messages?$top=50&$filter=sentDateTime ge ' + since + '&$select=id,subject,toRecipients,sentDateTime,conversationId,bodyPreview&$orderby=sentDateTime desc',
+      'https://graph.microsoft.com/v1.0/me/mailFolders/SentItems/messages?$top=100&$filter=sentDateTime ge ' + since + '&$select=id,subject,toRecipients,sentDateTime,conversationId,bodyPreview&$orderby=sentDateTime desc',
       { headers: { Authorization: 'Bearer ' + token } }
     );
     if (!sentRes.ok) throw new Error('Graph API: ' + sentRes.status);
@@ -219,26 +221,32 @@ async function fetchEmails() {
     const sent = sentData.value || [];
     log('Löytyi ' + sent.length + ' lähetettyä viestiä');
 
-    const myDomain = account.username.split('@')[1].toLowerCase();
-    log('Oma domain: ' + myDomain);
+    // Group by conversationId - keep only the LATEST sent message per thread
+    const threadMap = {};
+    for (const msg of sent) {
+      const cid = msg.conversationId;
+      if (!threadMap[cid] || new Date(msg.sentDateTime) > new Date(threadMap[cid].sentDateTime)) {
+        threadMap[cid] = msg;
+      }
+    }
+    const uniqueThreads = Object.values(threadMap);
+    log('Yksilöllisiä keskusteluketjuja: ' + uniqueThreads.length);
 
-    let skipReply = 0, skipTeams = 0, skipInternal = 0, skipNoRecipient = 0;
-
+    let skipInternal = 0, skipTeams = 0, skipReplied = 0;
     const unreplied = [];
-    for (let i = 0; i < sent.length; i++) {
-      const msg = sent[i];
-      const subject = msg.subject || '';
-      if (/^(RE:|FW:|FWD:|VS:|SV:)/i.test(subject)) { skipReply++; continue; }
 
-      // Skip Teams/calendar invitations
+    for (const msg of uniqueThreads) {
+      const subject = msg.subject || '';
       const preview = (msg.bodyPreview || '').toLowerCase();
-      if (/microsoft teams meeting|teams-kokous|join the meeting|liity kokoukseen|________________________________________________________________________/i.test(preview)) { skipTeams++; continue; }
+
+      // Skip Teams/calendar
+      if (/microsoft teams meeting|teams-kokous|join the meeting|liity kokoukseen/i.test(preview)) { skipTeams++; continue; }
       if (/^(invitation|kutsu|kalenterikutsu|meeting:|canceled:|peruttu:)/i.test(subject)) { skipTeams++; continue; }
 
       // At least one external recipient
       const recipients = msg.toRecipients || [];
-      if (recipients.length === 0) { skipNoRecipient++; continue; }
-      const hasExternal = recipients.some(r => {
+      if (recipients.length === 0) { skipInternal++; continue; }
+      const externalRecipients = recipients.filter(r => {
         const addr = (r.emailAddress && r.emailAddress.address || '').toLowerCase();
         if (!addr) return false;
         const domain = addr.split('@')[1] || '';
@@ -246,29 +254,36 @@ async function fetchEmails() {
         if (/noreply|no-reply|notifications?|mailer-daemon|donotreply/i.test(addr)) return false;
         return true;
       });
-      if (!hasExternal) { skipInternal++; continue; }
+      if (externalRecipients.length === 0) { skipInternal++; continue; }
 
+      // Check if anyone replied AFTER this sent message
       const convRes = await fetch(
-        "https://graph.microsoft.com/v1.0/me/messages?$filter=conversationId eq '" + msg.conversationId + "'&$select=from,sentDateTime&$top=20",
+        "https://graph.microsoft.com/v1.0/me/messages?$filter=conversationId eq '" + msg.conversationId + "'&$select=from,sentDateTime&$top=30&$orderby=sentDateTime desc",
         { headers: { Authorization: 'Bearer ' + token } }
       );
       const convData = await convRes.json();
-      const hasReply = (convData.value || []).some(m => {
-        const f = m.from && m.from.emailAddress && m.from.emailAddress.address ? m.from.emailAddress.address.toLowerCase() : '';
-        return f !== account.username.toLowerCase();
-      });
-      if (!hasReply) {
-        const sentDate = new Date(msg.sentDateTime);
-        unreplied.push({
-          subject: msg.subject || '(ei aihetta)',
-          to: msg.toRecipients ? msg.toRecipients.map(r => r.emailAddress.address).join(', ') : '',
-          date: sentDate.toLocaleDateString('fi-FI'),
-          daysSince: Math.floor((Date.now() - sentDate) / 864e5),
-          snippet: msg.bodyPreview ? msg.bodyPreview.slice(0, 100) : ''
-        });
+      const allMsgs = convData.value || [];
+
+      // Find latest message in thread
+      const latest = allMsgs[0];
+      if (latest) {
+        const latestFrom = latest.from && latest.from.emailAddress && latest.from.emailAddress.address ? latest.from.emailAddress.address.toLowerCase() : '';
+        // If latest message is NOT from me, then someone replied
+        if (latestFrom && latestFrom !== myEmail) { skipReplied++; continue; }
       }
+
+      const sentDate = new Date(msg.sentDateTime);
+      unreplied.push({
+        subject: subject || '(ei aihetta)',
+        to: externalRecipients.map(r => r.emailAddress.address).join(', '),
+        date: sentDate.toLocaleDateString('fi-FI'),
+        daysSince: Math.floor((Date.now() - sentDate) / 864e5),
+        snippet: msg.bodyPreview ? msg.bodyPreview.slice(0, 100) : ''
+      });
     }
+
     unreplied.sort((a, b) => b.daysSince - a.daysSince);
+    log('Suodatettu: ' + skipTeams + ' Teams/kutsuja, ' + skipInternal + ' sisäisiä, ' + skipReplied + ' joihin vastattu');
     log('Vastausta odottaa: ' + unreplied.length);
     renderResults(unreplied);
   } catch (e) {
