@@ -217,10 +217,27 @@ async function fetchEmails() {
     const sent = sentData.value || [];
     log('Löytyi ' + sent.length + ' lähetettyä viestiä');
 
+    const myDomain = account.username.split('@')[1].toLowerCase();
+    log('Oma domain: ' + myDomain + ' (suodatetaan sisäiset)');
+
     const unreplied = [];
     for (let i = 0; i < sent.length; i++) {
       const msg = sent[i];
       if (/^(RE:|FW:|FWD:)/i.test(msg.subject || '')) continue;
+
+      // Check if all recipients are external (not from my domain)
+      const recipients = msg.toRecipients || [];
+      if (recipients.length === 0) continue;
+      const hasExternal = recipients.some(r => {
+        const addr = (r.emailAddress && r.emailAddress.address || '').toLowerCase();
+        if (!addr) return false;
+        const domain = addr.split('@')[1] || '';
+        // exclude my domain and obvious automated senders
+        if (domain === myDomain) return false;
+        if (/noreply|no-reply|notifications?|mailer-daemon|donotreply/i.test(addr)) return false;
+        return true;
+      });
+      if (!hasExternal) continue;
 
       const convRes = await fetch(
         "https://graph.microsoft.com/v1.0/me/messages?$filter=conversationId eq '" + msg.conversationId + "'&$select=from,sentDateTime&$top=20",
@@ -258,7 +275,7 @@ function renderResults(list) {
     el.innerHTML = '<p>✅ Kaikki vastattu!</p>';
     return;
   }
-  let html = '<h2>' + list.length + ' viestiä ilman vastausta</h2>';
+  let html = '<h2>' + list.length + ' viestiä ilman vastausta <button onclick="copyToClipboard()" style="font-size:12px;padding:6px 12px;margin-left:10px;">📋 Kopioi lista</button></h2>';
   for (const e of list) {
     const cls = e.daysSince >= 14 ? 'urgent' : e.daysSince >= 7 ? 'waiting' : '';
     html += '<div class="email-row ' + cls + '">' +
